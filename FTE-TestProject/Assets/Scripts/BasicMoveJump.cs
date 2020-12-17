@@ -21,7 +21,7 @@ public enum PhysicsLayers
 }
 
 
-public class Player : Object2D
+public class BasicMoveJump : Object2D
 {
 
     public float groundMoveSpeed;

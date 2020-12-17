@@ -268,8 +268,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ec8b2b550a121e43bb12d2a00b3fb7b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  groundMoveSpeed: 100
-  airMoveSpeed: 50
+  groundMoveSpeed: 50
+  airMoveSpeed: 25
   startJumpForce: 300
   jumpAscentForce: 100
   jumpAscentTime: 0.5
