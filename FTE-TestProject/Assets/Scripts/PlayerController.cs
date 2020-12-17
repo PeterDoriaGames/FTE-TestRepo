@@ -23,9 +23,9 @@ public class PlayerController : Object2D
     private float XDir = 0;
     private float XVel = 0;
     private bool JumpInput = false;
+    private bool CancelAimingInput = false;
 
     private bool IsGrounded = false;
-    private bool FinishedAiming = false;
     private bool IsSwinging = false;
 
     
@@ -41,58 +41,66 @@ public class PlayerController : Object2D
         IsGrounded = IsColliderTouchingGround();
     }
 
-    private float YInputDir = 0;
-    private Vector2 InitialClickPos;
+
     private Vector2 ThrowVector;
-    private bool ShouldAimInput = false;
+    private bool StartAimingInput = false;
+    private bool ContinueAimingInput = false;
     private bool IsAiming = false;
-    private bool ShouldThrow = false;
-    private bool IsThrowing = false;
+    private bool ThrowHookInput = false;
+    private bool HasThrownHook = false;
+    private bool IsHookAttached = false;
     // Update is called once per frame
     void Update()
     {
         XDir = Input.GetAxisRaw("Horizontal");
-        YInputDir = Input.GetAxisRaw("Vertical");
-        JumpInput = Input.GetButtonDown("Jump");
+        JumpInput = Input.GetButtonDown("Jump") && IsGrounded;
 
-        ShouldAimInput = Input.GetButton("Fire1") && YInputDir == -1;
-        
-        if (IsGrounded)
+        if (HasThrownHook == false)
         {
-            print("grounded");
-            if (IsThrowing == false)
+            StartAimingInput = Input.GetButtonDown("Fire1");
+            ContinueAimingInput = Input.GetButton("Fire1");
+            ThrowHookInput = Input.GetButtonUp("Fire1");
+
+            CancelAimingInput = Input.GetButtonDown("Fire2") || IsGrounded == false;
+
+            //  WHERE TO UPDATE VISUALS IN LOGIC?
+
+            if (IsAiming)
             {
-                if (IsAiming)
+                if (CancelAimingInput)
                 {
-                    if (ShouldAimInput)
-                    {
-                        Vector2 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                        ThrowVector = InitialClickPos - clickPos;
-                    }
-                    else
-                    {
-                        if(YInputDir == -1 && ThrowVector.sqrMagnitude > 0)
-                        {
-                            ShouldThrow = true;
-                        }
-                        IsAiming = false;
-                    }
+                    IsAiming = false;
                 }
                 else
                 {
-                    if (ShouldAimInput)
+                    if (ThrowHookInput)
                     {
-                        InitialClickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                        IsAiming = false;
+                    }
+                    else if (ContinueAimingInput)
+                    {
+                        ThrowVector = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
                     }
                 }
+            }
+            else if (StartAimingInput)
+            {
+                IsAiming = true;
+                ThrowVector = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
             }
         }
     }
 
-    private float Timer = 0;
+    private float XSlowDownTimer = 0;
     private float PeakVel = 0;
     void FixedUpdate()
     {
+        if (ThrowHookInput)
+        { 
+            // spawn hook and throw
+        }
+
+                     
         if (IsGrounded)
         {
             // add check to see if should throw hook.
@@ -104,27 +112,26 @@ public class PlayerController : Object2D
             }
             else
             {
-                if (Timer == 0)
+                if (XSlowDownTimer == 0)
                 {
                     PeakVel = MyRB.velocity.x;
                 }
-                Timer += Time.deltaTime;
-                float t = Timer / 0.1f;
+                XSlowDownTimer += Time.deltaTime;
+                float t = XSlowDownTimer / 0.1f;
                 MyRB.velocity = new Vector2(Mathf.Lerp(PeakVel, 0, t), MyRB.velocity.y);
                 if (t >= 1)
                 {
-                    Timer = 0;
+                    XSlowDownTimer = 0;
                     MyRB.velocity = new Vector2(0, MyRB.velocity.y);
                 }
             }
-
-            
-            if (JumpInput && ShouldAimInput == false)
+    
+            if (JumpInput)
             {
                 MyRB.AddForce(new Vector2 (0, startJumpForce), ForceMode2D.Impulse);
             }
         }
-        else 
+        else if (IsHookAttached)
         {
             // check if in air or swinging
             if (IsSwinging)
