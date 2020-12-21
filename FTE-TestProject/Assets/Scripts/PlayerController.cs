@@ -7,27 +7,47 @@ using UnityEngine;
     Aim --
 */
 
+public struct PlayerInputData
+{
+    public float XDir;
+    public bool JumpInput;
+    public bool CancelAimingInput;
+    public bool StartAimingInput;
+    public bool ContinueAimingInput;
+    public bool ThrowHookInput;
+    //public bool PauseReelInInput;
+    public PlayerInputData(float xDir, bool jump, bool cancelAiming, bool startAiming, bool continueAiming, bool throwHook)
+    {
+        XDir = xDir;
+        JumpInput = jump;
+        CancelAimingInput = cancelAiming;
+        StartAimingInput = startAiming;
+        ContinueAimingInput = continueAiming;
+        ThrowHookInput = throwHook;
+    }
+}
+
 public class PlayerController : Object2D
 {
     
     public float groundMoveSpeed;
     public float startJumpForce;
+    public Hook myHook;
 
     private float xSwingSpeed = 10;
-
 
     private Rigidbody2D MyRB;
     private Collider2D MyCollider;
     // Determines how sloped ground can be
     private float MinGroundNormal = 0.65f;
-    private float XDir = 0;
     private float XVel = 0;
-    private bool JumpInput = false;
-    private bool CancelAimingInput = false;
 
+    public bool isGrounded { get { return isGrounded; } private set { IsGrounded = value; } }
     private bool IsGrounded = false;
     private bool IsSwinging = false;
 
+    public PlayerInputData inputData { get { return InputData; } private set { InputData = value; } }
+    private PlayerInputData InputData = new PlayerInputData();
     
     void Awake()
     {
@@ -38,76 +58,47 @@ public class PlayerController : Object2D
     // Start is called before the first frame update
     void Start()
     {
-        IsGrounded = IsColliderTouchingGround();
+        isGrounded = IsColliderTouchingGround();
     }
 
-
     private Vector2 ThrowVector;
-    private bool StartAimingInput = false;
-    private bool ContinueAimingInput = false;
     private bool IsAiming = false;
-    private bool ThrowHookInput = false;
     private bool HasThrownHook = false;
     private bool IsHookAttached = false;
     // Update is called once per frame
     void Update()
     {
-        XDir = Input.GetAxisRaw("Horizontal");
-        JumpInput = Input.GetButtonDown("Jump") && IsGrounded;
+        float xDir = Input.GetAxisRaw("Horizontal");
+        bool jumpInput = Input.GetButtonDown("Jump") && isGrounded;
 
-        if (HasThrownHook == false)
-        {
-            StartAimingInput = Input.GetButtonDown("Fire1");
-            ContinueAimingInput = Input.GetButton("Fire1");
-            ThrowHookInput = Input.GetButtonUp("Fire1");
+        bool startAimingInput = Input.GetButtonDown("Fire1");
+        bool continueAimingInput = Input.GetButton("Fire1");
+        bool throwHookInput = Input.GetButtonUp("Fire1");
 
-            CancelAimingInput = Input.GetButtonDown("Fire2") || IsGrounded == false;
+        bool cancelAimingInput = Input.GetButtonDown("Fire2") || isGrounded == false;
 
-            //  WHERE TO UPDATE VISUALS IN LOGIC?
+        //  WHERE TO UPDATE VISUALS IN LOGIC?
+        InputData = new PlayerInputData(xDir, jumpInput, startAimingInput, continueAimingInput, cancelAimingInput, throwHookInput);
 
-            if (IsAiming)
-            {
-                if (CancelAimingInput)
-                {
-                    IsAiming = false;
-                }
-                else
-                {
-                    if (ThrowHookInput)
-                    {
-                        IsAiming = false;
-                    }
-                    else if (ContinueAimingInput)
-                    {
-                        ThrowVector = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-                    }
-                }
-            }
-            else if (StartAimingInput)
-            {
-                IsAiming = true;
-                ThrowVector = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-            }
-        }
     }
 
     private float XSlowDownTimer = 0;
     private float PeakVel = 0;
     void FixedUpdate()
     {
-        if (ThrowHookInput)
-        { 
-            // spawn hook and throw
-        }
+        // NEED TO INTEGRATE PLAYER PHYSICS BASED ON HOOKMODE AND PLAYER STATE. 
+        // PHYSICS ARE APPLIED HERE. HOOK TAKES PLAYER INPUT AND TELLS PLAYER WHAT IS HAPPENING. PLAYER TAKES THAT INFO AND APPLIES APPROPRIATE FORCES.
 
+
+        // check hook mode to determine movement OR let hook tell you what to do???
                      
-        if (IsGrounded)
+        if (isGrounded)
         {
             // add check to see if should throw hook.
             
-            if (XDir != 0)
+            if (inputData.XDir != 0)
             {
-                XVel = XDir * groundMoveSpeed * Time.fixedDeltaTime;
+                XVel = inputData.XDir * groundMoveSpeed * Time.fixedDeltaTime;
                 MyRB.velocity = new Vector2(XVel, MyRB.velocity.y);
             }
             else
@@ -126,7 +117,7 @@ public class PlayerController : Object2D
                 }
             }
     
-            if (JumpInput)
+            if (inputData.JumpInput)
             {
                 MyRB.AddForce(new Vector2 (0, startJumpForce), ForceMode2D.Impulse);
             }
@@ -136,7 +127,7 @@ public class PlayerController : Object2D
             // check if in air or swinging
             if (IsSwinging)
             {
-                XVel = XDir * xSwingSpeed * Time.fixedDeltaTime;
+                XVel = inputData.XDir * xSwingSpeed * Time.fixedDeltaTime;
             }
         }
 
@@ -145,74 +136,77 @@ public class PlayerController : Object2D
     }
 
 
-    List<ContactPoint2D> enterContacts = new List<ContactPoint2D>();
+    private List<ContactPoint2D> EnterContacts = new List<ContactPoint2D>();
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (IsGrounded == false)
+        if (isGrounded == false)
         {
-            enterContacts.Clear();
-            collision.GetContacts(enterContacts);
-            for (int i = 0; i < enterContacts.Count; i++)
+            EnterContacts.Clear();
+            collision.GetContacts(EnterContacts);
+            for (int i = 0; i < EnterContacts.Count; i++)
             {
-                if (enterContacts[i].normal.y > MinGroundNormal)
+                if (EnterContacts[i].normal.y > MinGroundNormal)
                 {
-                    IsGrounded = true;  
+                    isGrounded = true;  
                 }
 
-                if (IsGrounded)
+                if (isGrounded)
                     break;
             }
         }
     }
 
-    List<ContactPoint2D> colliderContacts = new List<ContactPoint2D>();
-    List<ContactPoint2D> exitContacts = new List<ContactPoint2D>();
+    List<ContactPoint2D> ColliderContacts = new List<ContactPoint2D>();
+    List<ContactPoint2D> ExitContacts = new List<ContactPoint2D>();
     private void OnCollisionExit2D(Collision2D collision)
     {
-        IsGrounded = false;
+        isGrounded = false;
             
-        colliderContacts.Clear();
-        MyCollider.GetContacts(colliderContacts);
-        exitContacts.Clear();
-        collision.GetContacts(exitContacts);
+        ColliderContacts.Clear();
+        MyCollider.GetContacts(ColliderContacts);
+        ExitContacts.Clear();
+        collision.GetContacts(ExitContacts);
 
         // Check if I'm touching any ground. If so, I'm grounded.
-        for (int i = 0; i < colliderContacts.Count; i++)
+        for (int i = 0; i < ColliderContacts.Count; i++)
         {
-            if (exitContacts.Contains(colliderContacts[i]) == false)
+            if (ExitContacts.Contains(ColliderContacts[i]) == false)
             {
-                if (colliderContacts[i].normal.y > MinGroundNormal)
+                if (ColliderContacts[i].normal.y > MinGroundNormal)
                 {
                     print("still grounded");
-                    IsGrounded = true;
+                    isGrounded = true;
                 }
             }
 
-            if (IsGrounded)
+            if (isGrounded)
                 break;
         }
     }
 
     private bool IsColliderTouchingGround()
     {
-        IsGrounded = false;
+        isGrounded = false;
 
-        colliderContacts.Clear();
-        MyCollider.GetContacts(colliderContacts);   
+        ColliderContacts.Clear();
+        MyCollider.GetContacts(ColliderContacts);   
 
         // Check if I'm touching any ground. If so, I'm grounded.
-        for (int i = 0; i < colliderContacts.Count; i++)
+        for (int i = 0; i < ColliderContacts.Count; i++)
         {
-            if (colliderContacts[i].normal.y > MinGroundNormal)
+            if (ColliderContacts[i].normal.y > MinGroundNormal)
             {
                 print("still grounded");
-                IsGrounded = true;
+                isGrounded = true;
             }
 
-            if (IsGrounded)
+            if (isGrounded)
                 return true;
         }
 
         return false;
     }
 }
+
+
+
