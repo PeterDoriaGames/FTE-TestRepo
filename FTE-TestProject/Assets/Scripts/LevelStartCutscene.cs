@@ -72,13 +72,18 @@ public class LevelStartCutscene : MonoBehaviour
         if ((dummyPlayerTransform.GetComponent<DummyPlayer>().hasLanded || SkipCutscene) && HasCut == false)
         {
             // cut to black. transition between cameras. Switch dummy player for real player.
-            PPVolume.weight = 0.9f;
+            PPVolume.weight = 1f;
             WeightAtStartOfFadeIn = PPVolume.weight;
             dummyPlayerTransform.gameObject.SetActive(false);
             playerTransform.gameObject.SetActive(true);
             chasmCam.enabled = false;
             Timer = 0;
             HasCut = true;
+
+            for (int i = 0; i < gameObjectsToActivateOnFall.Length; i++)
+            {
+                gameObjectsToActivateOnFall[i].SetActive(true);
+            }
         }
         else if (HasCut && HasFadedIn == false)
         { 
@@ -95,11 +100,8 @@ public class LevelStartCutscene : MonoBehaviour
 
         if (HasFadedIn)
         {
-            for (int i = 0; i < gameObjectsToActivateOnFall.Length; i++)
-            {
-                gameObjectsToActivateOnFall[i].SetActive(true) ;
-            }
             gameObject.SetActive(false);
+
         }
        
     }

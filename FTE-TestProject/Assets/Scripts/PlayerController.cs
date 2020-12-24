@@ -193,7 +193,7 @@ public class PlayerController : MonoBehaviour
         {
             if (colliders[0] == null)
             {
-                print("NO COLLs");
+                //print("NO COLLs");
                 break;
             }
             if (colliders[i] == null)
@@ -210,7 +210,7 @@ public class PlayerController : MonoBehaviour
                 if (dot > MinGroundDotProduct)
                 {
                     isGrounded = true;
-                    print("GROUNDED");
+                    //print("GROUNDED");
                     break;
                 }
 
