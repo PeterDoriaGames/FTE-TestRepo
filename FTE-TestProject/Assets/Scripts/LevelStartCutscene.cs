@@ -13,7 +13,6 @@ public class LevelStartCutscene : MonoBehaviour
     public Transform dummyStart;
     public CinemachineVirtualCamera chasmCam;
     public float chasmCamEndDist;
-    public float gameplayCameraDist;
     public float timeTilZoomedOut;
     public float fadeInTime;
     public PostProcessVolume PPVolume;
@@ -38,7 +37,7 @@ public class LevelStartCutscene : MonoBehaviour
         ChasmCamStartDist = (ComponentBase as CinemachineFramingTransposer).m_CameraDistance;
     }
 
-    float LerpStartValue;
+    float WeightAtStartOfFadeIn;
     bool ZoomedOut = false;
     bool HasCut = false;
     bool HasFadedIn = false;
@@ -59,6 +58,8 @@ public class LevelStartCutscene : MonoBehaviour
             (ComponentBase as CinemachineFramingTransposer).m_CameraDistance = 
                 Mathf.Lerp(ChasmCamStartDist, chasmCamEndDist, t);
 
+
+            PPVolume.weight = t;
             if (t >= 1)
             {
                 ZoomedOut = true;
@@ -66,10 +67,12 @@ public class LevelStartCutscene : MonoBehaviour
             }
         }
 
+
         if ((dummyPlayerTransform.GetComponent<DummyPlayer>().hasLanded || SkipCutscene) && HasCut == false)
         {
             // cut to black. transition between cameras. Switch dummy player for real player.
-            PPVolume.weight = 1;
+            PPVolume.weight = 0.9f;
+            WeightAtStartOfFadeIn = PPVolume.weight;
             dummyPlayerTransform.gameObject.SetActive(false);
             playerTransform.gameObject.SetActive(true);
             chasmCam.enabled = false;
@@ -81,7 +84,7 @@ public class LevelStartCutscene : MonoBehaviour
             // fade in.
             Timer += Time.deltaTime;
             float t = Timer / fadeInTime;
-            PPVolume.weight = Mathf.Lerp(1, 0, t);
+            PPVolume.weight = Mathf.Lerp(WeightAtStartOfFadeIn, 0.1f, t);
 
             if (t >= 1)
             {

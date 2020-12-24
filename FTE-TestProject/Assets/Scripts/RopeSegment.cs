@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Object2D : MonoBehaviour
+public class RopeSegment : MonoBehaviour
 {
+    public GameObject aboveSegment, belowSegment;
+
     
 }

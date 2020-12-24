@@ -34,7 +34,7 @@ public class BasicMoveJump : Object2D
     private Rigidbody2D MyRB;
     private Collider2D MyCollider;
     // Determines how sloped ground can be
-    private float MinGroundNormal = 0.65f;
+    private float MinGroundDotProduct = 0.65f;
     private float XDir = 0;
     private float XVel = 0;
     private float YVel = 0;
@@ -135,7 +135,7 @@ public class BasicMoveJump : Object2D
                 collision.GetContacts(enterContacts);
                 for (int i = 0; i < enterContacts.Count; i++)
                 {
-                    if (enterContacts[i].normal.y > MinGroundNormal)
+                    if (enterContacts[i].normal.y > MinGroundDotProduct)
                     {
                         print("grounded");
                         IsGrounded = true;  
@@ -166,7 +166,7 @@ public class BasicMoveJump : Object2D
             {
                 if (exitContacts.Contains(colliderContacts[i]) == false)
                 {
-                    if (colliderContacts[i].normal.y > MinGroundNormal)
+                    if (colliderContacts[i].normal.y > MinGroundDotProduct)
                     {
                         print("still grounded");
                         IsGrounded = true;
@@ -191,7 +191,7 @@ public class BasicMoveJump : Object2D
             // Check if I'm touching any ground. If so, I'm grounded.
             for (int i = 0; i < colliderContacts.Count; i++)
             {
-                if (colliderContacts[i].normal.y > MinGroundNormal)
+                if (colliderContacts[i].normal.y > MinGroundDotProduct)
                 {
                     print("still grounded");
                     IsGrounded = true;

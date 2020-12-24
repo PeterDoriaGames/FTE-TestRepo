@@ -7,19 +7,25 @@ using UnityEngine;
 /// </summary>
 public abstract class HookableBase : Object2D
 {
+    public Rigidbody2D hookableHousing;
+    public float pullForce = 30f;
+
 
     [SerializeField]
     private bool IsFirmlyAttached = false;
-    public bool isFirmlyAttached { get { return IsFirmlyAttached; } }
+    public bool isFirmlyAttached { get { return IsFirmlyAttached; } protected set { IsFirmlyAttached = value; } }
     [SerializeField]
     private bool IsLooselyAttached = false;
-    public bool isLooselyAttached { get { return IsLooselyAttached; } }
+    public bool isLooselyAttached { get { return IsLooselyAttached; } protected set { IsLooselyAttached = value; } }
     
     private Hook HookedHook = null;
     public Hook hookedHook { get { return HookedHook; } }
 
     private void Awake()
     {
+        if (hookableHousing == null)
+            Debug.LogError("No housing for hookable");
+
         // hacky solution. add editor script and or enum wrapper later. Maybe SO if I want to get fancy
         if (IsFirmlyAttached && IsLooselyAttached)
         {
@@ -27,20 +33,9 @@ public abstract class HookableBase : Object2D
         }
     }
 
-    protected virtual void FixedUpdate()
+    public virtual void PullHookable(Vector2 pullDir)
     {
-        if (HookedHook)
-        {
-            if (HookedHook.state == HookState.ReelingBack)
-            {
-                PullHookable();
-            }
-        }
-    }
-
-    protected virtual void PullHookable()
-    {
-
+        // #TODO - add constraints for pulling at different angles.
     }
 
     public virtual void AddHook(Hook hook)
