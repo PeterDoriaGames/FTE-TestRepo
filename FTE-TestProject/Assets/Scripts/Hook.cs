@@ -132,7 +132,7 @@ public class Hook : Object2D
         if (newMode == HookMode.Holstered)
         {
             Mode = HookMode.Holstered;
-            print("holstered");
+            //print("holstered");
 
             HookRB2D.bodyType = RigidbodyType2D.Static;
             HookColl.enabled = false;
@@ -145,7 +145,7 @@ public class Hook : Object2D
         else if (newMode == HookMode.InitialThrow)
         {
             Mode = HookMode.InitialThrow;
-            print("initial throw");
+            //print("initial throw");
 
             HookRB2D.bodyType = RigidbodyType2D.Dynamic;
             transform.position = hookPlayer.transform.position;
@@ -154,25 +154,25 @@ public class Hook : Object2D
         }
         else if (newMode == HookMode.Aiming)
         {
-            print("aiming");
+            //print("aiming");
 
             Mode = HookMode.Aiming;
         }
         else if (newMode == HookMode.GrapplingHook)
         {
-            print("grappling hook");
+            //print("grappling hook");
 
             Mode = HookMode.GrapplingHook;
         }
         else if (newMode == HookMode.FishingPole)
         {
-            print("fishing pole");
+            //print("fishing pole");
 
             Mode = HookMode.FishingPole;
         }
         else if (newMode == HookMode.SteadyRope)
         {
-            print("steady rope");
+            //print("steady rope");
 
             Mode = HookMode.SteadyRope;
         }

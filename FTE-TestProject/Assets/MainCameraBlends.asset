@@ -13,18 +13,18 @@ MonoBehaviour:
   m_Name: MainCameraBlends
   m_EditorClassIdentifier: 
   m_CustomBlends:
-  - m_From: vcam2 - gameplayFreeCam
-    m_To: '**ANY CAMERA**'
+  - m_From: vcam18Zipline
+    m_To: vcam19Zipline2
     m_Blend:
       m_Style: 1
-      m_Time: 5
+      m_Time: 10
       m_CustomCurve:
         serializedVersion: 2
         m_Curve: []
         m_PreInfinity: 0
         m_PostInfinity: 0
         m_RotationOrder: 0
-  - m_From: 'vcam3 - gameplayFreeCam '
+  - m_From: '**ANY CAMERA**'
     m_To: '**ANY CAMERA**'
     m_Blend:
       m_Style: 1

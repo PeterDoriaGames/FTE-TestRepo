@@ -12,6 +12,7 @@ public class LevelStartCutscene : MonoBehaviour
     public Transform playerTransform;
     public Transform dummyStart;
     public CinemachineVirtualCamera chasmCam;
+    public GameObject[] gameObjectsToActivateOnFall;
     public float chasmCamEndDist;
     public float timeTilZoomedOut;
     public float fadeInTime;
@@ -94,6 +95,10 @@ public class LevelStartCutscene : MonoBehaviour
 
         if (HasFadedIn)
         {
+            for (int i = 0; i < gameObjectsToActivateOnFall.Length; i++)
+            {
+                gameObjectsToActivateOnFall[i].SetActive(true) ;
+            }
             gameObject.SetActive(false);
         }
        
