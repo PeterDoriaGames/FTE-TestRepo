@@ -111,7 +111,7 @@ public class PlayerController : MonoBehaviour
 
         if (InputData.JumpInput && isGrounded == false)
         {
-            Debug.LogError("try jump but not grounded");
+            Debug.Log("try jump but not grounded");
         }
 
         if (isGrounded)
@@ -158,7 +158,6 @@ public class PlayerController : MonoBehaviour
 
 
     public float minGroundDist = 1f;
-
     /// <summary>
     /// Custom Ground Check to see if player is colliding with ground *this frame*
     /// 
@@ -173,47 +172,57 @@ public class PlayerController : MonoBehaviour
         int hooklayer = 1 << 11;
         int finalLayerMask = ~(playerlayer | hooklayer);
 
-        Vector3 capsuleTop = new Vector3(MyCollider.bounds.center.x, MyCollider.bounds.max.y + Physics.defaultContactOffset, MyCollider.bounds.center.z);
-        Vector3 capsuleBottom = new Vector3(MyCollider.bounds.center.x, MyCollider.bounds.min.y - Physics.defaultContactOffset - 1, MyCollider.bounds.center.z);
-        Debug.DrawLine(capsuleBottom, new Vector3(capsuleBottom.x, capsuleBottom.y - minGroundDist, capsuleBottom.z ));
+        float cRadius = MyCollider.radius + Physics.defaultContactOffset;
+        float cTop = MyCollider.bounds.max.y + Physics.defaultContactOffset;
+        float cBot = MyCollider.bounds.min.y - Physics.defaultContactOffset;
 
-        // Any colliders touching player?
+        // Any colliders touching player. Using OverlapCapsule as opposed to CapsuleCast. CapsuleCast checks for colliders in a direction. CapsuleCast casts a capsule into one location and checks
+        Vector3 capsuleTop = new Vector3(MyCollider.bounds.center.x, cTop, MyCollider.bounds.center.z);
+        Vector3 capsuleBottom = new Vector3(MyCollider.bounds.center.x, cBot, MyCollider.bounds.center.z);
         Collider[] colliders = new Collider[10];
         Physics.OverlapCapsuleNonAlloc(capsuleTop,
                                         capsuleBottom,
-                                        MyCollider.radius + Physics.defaultContactOffset,
+                                        cRadius,
                                         colliders,
                                         finalLayerMask,
                                         QueryTriggerInteraction.Ignore);
+ 
+        Debug.DrawLine(capsuleBottom, new Vector3(capsuleBottom.x, capsuleBottom.y - minGroundDist, capsuleBottom.z));
 
         // Are any of the colliders touching the player considered ground?
         bool groundValueBeforeCheck = isGrounded;
         isGrounded = false;
-        for (int i = 0; i < colliders.Length; i++)
+        int i = 0;
+        // is touching another collider
+        if (colliders[0] != null)
         {
-            if (colliders[0] == null)
+            for (; i < colliders.Length; i++)
             {
-                //print("NO COLLs");
-                break;
-            }
-            if (colliders[i] == null)
-            {
-                break;
-            }
-
-            Vector3 colliderToPlayer = capsuleBottom - colliders[i].ClosestPoint(capsuleBottom);
-            float dist = colliderToPlayer.magnitude;
-            if (dist < (minGroundDist))
-            {
-                float dot = Vector3.Dot(Vector3.up, colliderToPlayer);
-
-                if (dot > MinGroundDotProduct)
+            
+                if (colliders[i] == null)
                 {
-                    isGrounded = true;
-                    //print("GROUNDED");
                     break;
                 }
+                Debug.DrawLine(capsuleBottom, colliders[i].ClosestPoint(capsuleBottom), Color.red, 0.3f, true);
 
+                // Ground check
+                Vector3 colliderToPlayer = capsuleBottom - colliders[i].ClosestPoint(capsuleBottom);
+                float dist = colliderToPlayer.sqrMagnitude;
+                if (dist < (minGroundDist * minGroundDist))
+                {
+                    float dot = Vector3.Dot(Vector3.up, colliderToPlayer.normalized);
+
+                    if (dot > MinGroundDotProduct)
+                    {
+                        isGrounded = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isGrounded)
+            {
+                Debug.DrawLine(capsuleBottom, colliders[i].ClosestPoint(capsuleBottom), Color.green, 0.3f, true);
             }
         }
     }
