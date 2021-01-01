@@ -40,11 +40,18 @@ public class PlayerController : MonoBehaviour
     public float walkDeaccelerationTime;
     public float maxAirSpeed;
     public float airAcceleration;
+    public float airControlTime;
     public float startJumpForce;
+    [Tooltip("Time player needs to be in air to be stunned when landing.")]
+    public float stunningInAirTimer;
+    [Tooltip("Time until player can move again after they have landed on ground.")]
+    public float stunnedLandingTime;
     public float additionalGravityScale = 2f;
-    public float JustJumpedCooldown = 0.05f;
     public float minGroundDist = 0.1f;
     public Hook myHook;
+
+    [SerializeField]
+    private bool NoControl = false;
 
     private RigidbodyConstraints GroundedConstraints;
     private float xSwingSpeed = 10;
@@ -53,7 +60,6 @@ public class PlayerController : MonoBehaviour
     private CapsuleCollider MyCollider;
     // Determines how sloped ground can be
     private float MinGroundDotProduct = 0.65f;
-    private float MinWallDotProduct = 0.5f;
     private float XMove = 0;
     private float ZMove = 0;
     private float YVel = 0;
@@ -93,20 +99,34 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    private float GroundCheckTimer = 0;
+
     private float XMoveWhenLeftGround = 0;
     private float ZMoveWhenLeftGround = 0;
+    private float AirControlTimer = 0;
+    private float InAirTimer = 0;
+    private float StunnedLandingTimer;
     private float XVel = 0;
     private float ZVel = 0;
     void FixedUpdate()
     {
-        if (GroundCheckTimer > 0 )
+        CollisionChecks();
+
+        if (AirControlTimer > 0)
         {
-            GroundCheckTimer -= Time.fixedDeltaTime;
+            AirControlTimer -= Time.fixedDeltaTime;
         }
-        else
+
+        if (StunnedLandingTimer > 0)
         {
-            CollisionChecks();
+            StunnedLandingTimer -= Time.fixedDeltaTime;
+            if (NoControl == false)
+            {
+                NoControl = true;
+            }
+        }
+        else if (NoControl)
+        {
+            NoControl = false;
         }
 
         // NEED TO INTEGRATE PLAYER PHYSICS BASED ON HOOKMODE AND PLAYER STATE. 
@@ -127,6 +147,7 @@ public class PlayerController : MonoBehaviour
         {
             MyRB.constraints = GroundedConstraints;
 
+            // ground movement
             XMove = inputData.XDir * walkAcceleration * Time.fixedDeltaTime;
             ZMove = inputData.ZDir * walkAcceleration * Time.fixedDeltaTime;
             MyRB.AddForce(XMove, 0, ZMove);
@@ -137,9 +158,6 @@ public class PlayerController : MonoBehaviour
                 MyRB.constraints = RigidbodyConstraints.FreezeRotation;
 
                 MyRB.AddForce(new Vector2(0, startJumpForce), ForceMode.Impulse);
-                XMoveWhenLeftGround = MyRB.velocity.x;
-                ZMoveWhenLeftGround = MyRB.velocity.z;
-                GroundCheckTimer = JustJumpedCooldown;
             }
             // ground movement limiters
             else if (XMove != 0 || ZMove != 0)
@@ -163,9 +181,8 @@ public class PlayerController : MonoBehaviour
         //  IN AIR
         else
         {
-            MyRB.constraints = RigidbodyConstraints.FreezeRotation;
+            InAirTimer += Time.fixedDeltaTime;
 
-            // AIR COLLISION CHECK????? 
 
             if (myHook.attachedHookable)
             {
@@ -177,15 +194,44 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // BUG -- WHEN PLAYER COLLIDES WITH SOMETHING IN AIR, THEY WILL KEEP MOVING INTO IT. 
-                XMove = XMoveWhenLeftGround + inputData.XDir * airAcceleration * Time.fixedDeltaTime;
-                ZMove = ZMoveWhenLeftGround + inputData.ZDir * airAcceleration * Time.fixedDeltaTime;
-                MyRB.velocity = (new Vector3(XMove, MyRB.velocity.y, ZMove));
+                XMove = inputData.XDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
+                ZMove = inputData.ZDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
+                MyRB.AddForce(new Vector3(XMove, 0, ZMove));
+
+                // clamping velocity to max walk speed
+                Vector2 AirVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
+                if (AirVelocity.sqrMagnitude > maxAirSpeed * maxAirSpeed)
+                {
+                    float XDot = Vector2.Dot(AirVelocity, new Vector2(inputData.XDir, 0));
+                    float ZDot = Vector2.Dot(AirVelocity, new Vector2(0, inputData.ZDir));
+
+                    MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
+                }
+
+                //// #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
+                //float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
+                //float zVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.z, 0, ref ZVel, walkDeaccelerationTime * (MyRB.velocity.z / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
+                //MyRB.velocity = new Vector3(xVelAfterFriction, MyRB.velocity.y, zVelAfterFriction);
             }
         }
 
     }
 
+    private void LeftGround()
+    {
+        MyRB.constraints = RigidbodyConstraints.FreezeRotation;
+        XMoveWhenLeftGround = MyRB.velocity.x;
+        ZMoveWhenLeftGround = MyRB.velocity.z;
+        InAirTimer = 0;
+        AirControlTimer = airControlTime;
+    }
+    private void LandedOnGround()
+    {
+        if (InAirTimer > stunningInAirTimer)
+        {
+            StunnedLandingTimer = stunnedLandingTime;
+        }
+    }
 
     /// <summary>
     /// Custom Ground Check to see if player is colliding with ground *this frame*
@@ -258,11 +304,14 @@ public class PlayerController : MonoBehaviour
             if (isGrounded)
             {
                 Debug.DrawLine(capsuleBottom, colliders[i].ClosestPoint(capsuleBottom), Color.green, 0.3f, true);
+                if (groundedValueLastFrame == false)
+                {
+                    LandedOnGround();
+                }
             }
             else if (groundedValueLastFrame)
             {
-                XMoveWhenLeftGround = MyRB.velocity.x;
-                ZMoveWhenLeftGround = MyRB.velocity.z;
+                LeftGround();
             }
 
             i = 0;

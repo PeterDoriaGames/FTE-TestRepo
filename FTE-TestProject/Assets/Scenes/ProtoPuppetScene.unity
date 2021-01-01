@@ -22861,6 +22861,7 @@ MonoBehaviour:
   walkDeaccelerationTime: 0.1
   maxAirSpeed: 0
   airAcceleration: 0
+  airControlTime: 0.1
   startJumpForce: 250
   additionalGravityScale: 0
   JustJumpedCooldown: 0
