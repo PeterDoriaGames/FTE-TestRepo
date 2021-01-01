@@ -39,6 +39,8 @@ public class PlayerController : MonoBehaviour
     public float airMoveSpeed;
     public float startJumpForce;
     public float additionalGravityScale = 2f;
+    public float JustJumpedCooldown = 0.05f;
+    public float minGroundDist = 0.1f;
     public Hook myHook;
 
     private float xSwingSpeed = 10;
@@ -63,7 +65,7 @@ public class PlayerController : MonoBehaviour
         MyRB = GetComponent<Rigidbody>();
         MyCollider = GetComponent<CapsuleCollider>();
 
-        GroundedConstraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+        GroundedConstraints = RigidbodyConstraints.FreezeRotation ;
     }
 
 
@@ -88,7 +90,8 @@ public class PlayerController : MonoBehaviour
 
     private RigidbodyConstraints GroundedConstraints;
     private float GroundCheckTimer = 0;
-    private float JustJumpedCooldown = 0.3f;
+    private float XVelAtJump;
+    private float ZVelAtJump;
     void FixedUpdate()
     {
 
@@ -127,16 +130,22 @@ public class PlayerController : MonoBehaviour
                 MyRB.constraints = RigidbodyConstraints.FreezeRotation;
 
                 MyRB.AddForce(new Vector2 (0, startJumpForce), ForceMode.Impulse);
+                XVelAtJump = MyRB.velocity.x;
+                ZVelAtJump = MyRB.velocity.z;
                 GroundCheckTimer = JustJumpedCooldown;
             }
+            else
+            {
+                MyRB.velocity = (new Vector3(XVel, MyRB.velocity.y, ZVel));
 
-            MyRB.velocity = (new Vector3(XVel, MyRB.velocity.y, ZVel));
-
+            }
         }
         //  IN AIR
         else
         {
             MyRB.constraints = RigidbodyConstraints.FreezeRotation;
+
+            // AIR COLLISION CHECK????? 
 
             if (myHook.attachedHookable)
             {
@@ -148,8 +157,9 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                XVel = inputData.XDir * airMoveSpeed * Time.fixedDeltaTime;
-                ZVel = inputData.ZDir * airMoveSpeed * Time.fixedDeltaTime;
+                // BUG -- WHEN PLAYER COLLIDES WITH SOMETHING IN AIR, THEY WILL KEEP MOVING INTO IT. 
+                XVel = XVelAtJump + inputData.XDir * airMoveSpeed * Time.fixedDeltaTime;
+                ZVel = ZVelAtJump + inputData.ZDir * airMoveSpeed * Time.fixedDeltaTime;
                 MyRB.velocity = (new Vector3(XVel, MyRB.velocity.y, ZVel));
             }
         }
@@ -157,14 +167,13 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    public float minGroundDist = 1f;
     /// <summary>
     /// Custom Ground Check to see if player is colliding with ground *this frame*
     /// 
+    /// Using Physics.OverlapCapsuleNonAlloc()
     /// Can't use OnCollisionEnter because that does not happen every frame.
     /// OnCollisionStay can be costly.
-    /// CapsuleCast does not capture hits until it moves from its starting point. Makes it hard to figure it out. 
-    /// 
+    /// Capsule cast checks for collisions in a direction, which is finnicky to use for collisions happening to the player right now. 
     /// </summary>
     private void GroundedCheck()
     {
@@ -174,9 +183,9 @@ public class PlayerController : MonoBehaviour
 
         float cRadius = MyCollider.radius + Physics.defaultContactOffset;
         float cTop = MyCollider.bounds.max.y + Physics.defaultContactOffset;
-        float cBot = MyCollider.bounds.min.y - Physics.defaultContactOffset;
+        float cBot = MyCollider.bounds.min.y;
 
-        // Any colliders touching player. Using OverlapCapsule as opposed to CapsuleCast. CapsuleCast checks for colliders in a direction. CapsuleCast casts a capsule into one location and checks
+        // Any colliders touching player. Using OverlapCapsule as opposed to CapsuleCast. CapsuleCast checks for colliders in a direction. OverlapCapsule casts a capsule into one location and checks
         Vector3 capsuleTop = new Vector3(MyCollider.bounds.center.x, cTop, MyCollider.bounds.center.z);
         Vector3 capsuleBottom = new Vector3(MyCollider.bounds.center.x, cBot, MyCollider.bounds.center.z);
         Collider[] colliders = new Collider[10];
@@ -187,10 +196,8 @@ public class PlayerController : MonoBehaviour
                                         finalLayerMask,
                                         QueryTriggerInteraction.Ignore);
  
-        Debug.DrawLine(capsuleBottom, new Vector3(capsuleBottom.x, capsuleBottom.y - minGroundDist, capsuleBottom.z));
-
         // Are any of the colliders touching the player considered ground?
-        bool groundValueBeforeCheck = isGrounded;
+        bool groundedValueLastFrame = isGrounded;
         isGrounded = false;
         int i = 0;
         // is touching another collider
@@ -203,14 +210,16 @@ public class PlayerController : MonoBehaviour
                 {
                     break;
                 }
-                Debug.DrawLine(capsuleBottom, colliders[i].ClosestPoint(capsuleBottom), Color.red, 0.3f, true);
+                Vector3 drawPoint = new Vector3(capsuleBottom.x, capsuleBottom.y + 1f, capsuleBottom.z);
+                Debug.DrawLine(drawPoint, colliders[i].ClosestPoint(capsuleBottom), Color.red, 0.3f, true);
 
                 // Ground check
                 Vector3 colliderToPlayer = capsuleBottom - colliders[i].ClosestPoint(capsuleBottom);
                 float dist = colliderToPlayer.sqrMagnitude;
                 if (dist < (minGroundDist * minGroundDist))
                 {
-                    float dot = Vector3.Dot(Vector3.up, colliderToPlayer.normalized);
+                    Vector3 playerDotVec = drawPoint - colliders[i].ClosestPoint(capsuleBottom);
+                    float dot = Vector3.Dot(Vector3.up, playerDotVec.normalized);
 
                     if (dot > MinGroundDotProduct)
                     {
