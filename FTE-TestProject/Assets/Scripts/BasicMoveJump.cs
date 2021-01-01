@@ -25,7 +25,7 @@ public class BasicMoveJump : Object2D
 {
 
     public float groundMoveSpeed;
-    public float airMoveSpeed;
+    public float airAcceleration;
     public float startJumpForce;
     public float jumpAscentForce;
     public float jumpAscentTime;
@@ -36,7 +36,7 @@ public class BasicMoveJump : Object2D
     // Determines how sloped ground can be
     private float MinGroundDotProduct = 0.65f;
     private float XDir = 0;
-    private float XVel = 0;
+    private float XMove = 0;
     private float YVel = 0;
     private float JumpTimer = 0;
     private bool JumpStartInput = false;
@@ -82,7 +82,7 @@ public class BasicMoveJump : Object2D
         if (IsGrounded)
         {
             YVel = 0;
-            XVel = XDir * groundMoveSpeed * Time.fixedDeltaTime;
+            XMove = XDir * groundMoveSpeed * Time.fixedDeltaTime;
 
             if  (JumpStartInput)
             {
@@ -96,7 +96,7 @@ public class BasicMoveJump : Object2D
         }
         else // in air
         {
-            XVel = XDir * airMoveSpeed * Time.fixedDeltaTime;
+            XMove = XDir * airAcceleration * Time.fixedDeltaTime;
 
             if (IsJumping)
             {
@@ -120,7 +120,7 @@ public class BasicMoveJump : Object2D
         }
 
         MyRB.AddForce(new Vector2(0, YVel));
-        MyRB.velocity = new Vector2(XVel, MyRB.velocity.y);
+        MyRB.velocity = new Vector2(XMove, MyRB.velocity.y);
     }
 
 

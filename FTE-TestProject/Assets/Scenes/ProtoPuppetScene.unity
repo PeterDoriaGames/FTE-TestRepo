@@ -22856,8 +22856,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48d2734a74169334798303db95a7de26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  groundMoveSpeed: 300
-  airMoveSpeed: 100
+  maxWalkSpeed: 100000
+  walkAcceleration: 100000
+  walkDeaccelerationTime: 0.1
+  maxAirSpeed: 0
+  airAcceleration: 0
   startJumpForce: 250
   additionalGravityScale: 0
   JustJumpedCooldown: 0
