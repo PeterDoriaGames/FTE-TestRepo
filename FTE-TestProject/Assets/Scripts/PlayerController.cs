@@ -43,7 +43,7 @@ public class PlayerController : MonoBehaviour
     public float airControlTime;
     public float startJumpForce;
     [Tooltip("Time player needs to be in air to be stunned when landing.")]
-    public float stunningInAirTimer;
+    public float stunningInAirTime;
     [Tooltip("Time until player can move again after they have landed on ground.")]
     public float stunnedLandingTime;
     public float additionalGravityScale = 2f;
@@ -96,10 +96,13 @@ public class PlayerController : MonoBehaviour
 
         //  WHERE TO UPDATE VISUALS IN LOGIC?
         InputData = new PlayerInputData(xDir, zDir, jumpInput, startAimingInput, continueAimingInput, cancelAimingInput, throwHookInput, disAttachHookInput);
-
+        if (inputData.JumpInput)
+        {
+            ShouldJump = true;
+        }
     }
 
-
+    private bool ShouldJump = false;
     private float XMoveWhenLeftGround = 0;
     private float ZMoveWhenLeftGround = 0;
     private float AirControlTimer = 0;
@@ -137,83 +140,85 @@ public class PlayerController : MonoBehaviour
 
         MyRB.AddForce(Physics.gravity * additionalGravityScale);
 
-        if (InputData.JumpInput && isGrounded == false)
+        if (NoControl == false)
         {
-            Debug.Log("try jump but not grounded");
-        }
-
-        // force-based movement. max vel's. Accleration value. Deacceleration value. 
-        if (isGrounded)
-        {
-            MyRB.constraints = GroundedConstraints;
-
-            // ground movement
-            XMove = inputData.XDir * walkAcceleration * Time.fixedDeltaTime;
-            ZMove = inputData.ZDir * walkAcceleration * Time.fixedDeltaTime;
-            MyRB.AddForce(XMove, 0, ZMove);
-
-            // start jump
-            if (inputData.JumpInput)
+            if (InputData.JumpInput && isGrounded == false)
             {
-                MyRB.constraints = RigidbodyConstraints.FreezeRotation;
-
-                MyRB.AddForce(new Vector2(0, startJumpForce), ForceMode.Impulse);
+                Debug.Log("try jump but not grounded");
             }
-            // ground movement limiters
-            else if (XMove != 0 || ZMove != 0)
-            {
-                // clamping velocity to max walk speed
-                Vector2 WalkVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
-                if (WalkVelocity.sqrMagnitude > maxWalkSpeed * maxWalkSpeed)
-                {
-                    float XDot = Vector2.Dot(WalkVelocity, new Vector2(inputData.XDir, 0));
-                    float ZDot = Vector2.Dot(WalkVelocity, new Vector2(0, inputData.ZDir));
 
-                    MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
+            // force-based movement. max vel's. Accleration value. Deacceleration value. 
+            if (isGrounded)
+            {
+                // ground movement
+                XMove = inputData.XDir * walkAcceleration * Time.fixedDeltaTime;
+                ZMove = inputData.ZDir * walkAcceleration * Time.fixedDeltaTime;
+                MyRB.AddForce(XMove, 0, ZMove);
+
+                // start jump
+                if (ShouldJump)
+                {
+                    MyRB.constraints = RigidbodyConstraints.FreezeRotation;
+                    MyRB.AddForce(new Vector2(0, startJumpForce), ForceMode.Impulse);
+                    ShouldJump = false;
                 }
+                // ground movement limiters
+                else if (XMove != 0 || ZMove != 0)
+                {
+                    // clamping velocity to max walk speed
+                    Vector2 WalkVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
+                    if (WalkVelocity.sqrMagnitude > maxWalkSpeed * maxWalkSpeed)
+                    {
+                        float XDot = Vector2.Dot(WalkVelocity, new Vector2(inputData.XDir, 0));
+                        float ZDot = Vector2.Dot(WalkVelocity, new Vector2(0, inputData.ZDir));
+
+                        MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
+                    }
                 
-                // #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
-                float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxWalkSpeed), float.MaxValue, Time.fixedDeltaTime);
-                float zVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.z, 0, ref ZVel, walkDeaccelerationTime * (MyRB.velocity.z / maxWalkSpeed), float.MaxValue, Time.fixedDeltaTime);
-                MyRB.velocity = new Vector3(xVelAfterFriction, MyRB.velocity.y, zVelAfterFriction);
-            }
-        }
-        //  IN AIR
-        else
-        {
-            InAirTimer += Time.fixedDeltaTime;
-
-
-            if (myHook.attachedHookable)
-            {
-                // check if in air or swinging SHOULD NOT BE STRAIGHT BOOL. SHOULD CHECK HOOKMODE
-                if (myHook.mode == HookMode.SteadyRope)
-                {
-                    XMove = inputData.XDir * xSwingSpeed * Time.fixedDeltaTime;
+                    // #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
+                    float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxWalkSpeed), float.MaxValue, Time.fixedDeltaTime);
+                    float zVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.z, 0, ref ZVel, walkDeaccelerationTime * (MyRB.velocity.z / maxWalkSpeed), float.MaxValue, Time.fixedDeltaTime);
+                    MyRB.velocity = new Vector3(xVelAfterFriction, MyRB.velocity.y, zVelAfterFriction);
                 }
             }
+            //  IN AIR
             else
             {
-                XMove = inputData.XDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
-                ZMove = inputData.ZDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
-                MyRB.AddForce(new Vector3(XMove, 0, ZMove));
+                InAirTimer += Time.fixedDeltaTime;
 
-                // clamping velocity to max walk speed
-                Vector2 AirVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
-                if (AirVelocity.sqrMagnitude > maxAirSpeed * maxAirSpeed)
+
+                if (myHook.attachedHookable)
                 {
-                    float XDot = Vector2.Dot(AirVelocity, new Vector2(inputData.XDir, 0));
-                    float ZDot = Vector2.Dot(AirVelocity, new Vector2(0, inputData.ZDir));
-
-                    MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
+                    // check if in air or swinging SHOULD NOT BE STRAIGHT BOOL. SHOULD CHECK HOOKMODE
+                    if (myHook.mode == HookMode.SteadyRope)
+                    {
+                        XMove = inputData.XDir * xSwingSpeed * Time.fixedDeltaTime;
+                    }
                 }
+                else
+                {
+                    XMove = inputData.XDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
+                    ZMove = inputData.ZDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
+                    MyRB.AddForce(new Vector3(XMove, 0, ZMove));
 
-                //// #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
-                //float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
-                //float zVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.z, 0, ref ZVel, walkDeaccelerationTime * (MyRB.velocity.z / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
-                //MyRB.velocity = new Vector3(xVelAfterFriction, MyRB.velocity.y, zVelAfterFriction);
+                    // clamping velocity to max walk speed
+                    Vector2 AirVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
+                    if (AirVelocity.sqrMagnitude > maxAirSpeed * maxAirSpeed)
+                    {
+                        float XDot = Vector2.Dot(AirVelocity, new Vector2(inputData.XDir, 0));
+                        float ZDot = Vector2.Dot(AirVelocity, new Vector2(0, inputData.ZDir));
+
+                        MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
+                    }
+
+                    //// #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
+                    //float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
+                    //float zVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.z, 0, ref ZVel, walkDeaccelerationTime * (MyRB.velocity.z / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
+                    //MyRB.velocity = new Vector3(xVelAfterFriction, MyRB.velocity.y, zVelAfterFriction);
+                }
             }
         }
+
 
     }
 
@@ -227,7 +232,8 @@ public class PlayerController : MonoBehaviour
     }
     private void LandedOnGround()
     {
-        if (InAirTimer > stunningInAirTimer)
+        MyRB.constraints = GroundedConstraints;
+        if (InAirTimer > stunningInAirTime)
         {
             StunnedLandingTimer = stunnedLandingTime;
         }
@@ -281,7 +287,7 @@ public class PlayerController : MonoBehaviour
                 // Grounded Check
                 if (isGrounded == false)
                 {
-                    Vector3 drawPoint = new Vector3(capsuleBottom.x, capsuleBottom.y + 1f, capsuleBottom.z);
+                    Vector3 drawPoint = new Vector3(capsuleBottom.x, capsuleBottom.y + 0.5f, capsuleBottom.z);
                     Debug.DrawLine(drawPoint, colliders[i].ClosestPoint(capsuleBottom), Color.red, 0.3f, true);
 
                     // Ground check
@@ -303,7 +309,7 @@ public class PlayerController : MonoBehaviour
 
             if (isGrounded)
             {
-                Debug.DrawLine(capsuleBottom, colliders[i].ClosestPoint(capsuleBottom), Color.green, 0.3f, true);
+                Debug.DrawLine(capsuleBottom + Vector3.up, colliders[i].ClosestPoint(capsuleBottom), Color.green, 0.3f, true);
                 if (groundedValueLastFrame == false)
                 {
                     LandedOnGround();
