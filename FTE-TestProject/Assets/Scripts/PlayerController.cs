@@ -108,8 +108,8 @@ public class PlayerController : MonoBehaviour
     private float AirControlTimer = 0;
     private float InAirTimer = 0;
     private float StunnedLandingTimer;
-    private float XVel = 0;
-    private float ZVel = 0;
+    [Tooltip("Used for smoothdamping ref")]
+    private Vector3 GroundMovementVelocity = Vector3.zero;
     void FixedUpdate()
     {
         CollisionChecks();
@@ -161,31 +161,19 @@ public class PlayerController : MonoBehaviour
                     MyRB.constraints = RigidbodyConstraints.FreezeRotation;
                     MyRB.AddForce(new Vector2(0, startJumpForce), ForceMode.Impulse);
                     ShouldJump = false;
+
+                    ClampAirVelocity();
                 }
                 // ground movement limiters
                 else if (XMove != 0 || ZMove != 0)
                 {
-                    // clamping velocity to max walk speed
-                    Vector2 WalkVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
-                    if (WalkVelocity.sqrMagnitude > maxWalkSpeed * maxWalkSpeed)
-                    {
-                        float XDot = Vector2.Dot(WalkVelocity, new Vector2(inputData.XDir, 0));
-                        float ZDot = Vector2.Dot(WalkVelocity, new Vector2(0, inputData.ZDir));
-
-                        MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
-                    }
-                
-                    // #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
-                    float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxWalkSpeed), float.MaxValue, Time.fixedDeltaTime);
-                    float zVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.z, 0, ref ZVel, walkDeaccelerationTime * (MyRB.velocity.z / maxWalkSpeed), float.MaxValue, Time.fixedDeltaTime);
-                    MyRB.velocity = new Vector3(xVelAfterFriction, MyRB.velocity.y, zVelAfterFriction);
+                    ClampGroundVelocity();
                 }
             }
             //  IN AIR
             else
             {
                 InAirTimer += Time.fixedDeltaTime;
-
 
                 if (myHook.attachedHookable)
                 {
@@ -201,15 +189,7 @@ public class PlayerController : MonoBehaviour
                     ZMove = inputData.ZDir * airAcceleration * (AirControlTimer / airControlTime) * Time.fixedDeltaTime;
                     MyRB.AddForce(new Vector3(XMove, 0, ZMove));
 
-                    // clamping velocity to max walk speed
-                    Vector2 AirVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
-                    if (AirVelocity.sqrMagnitude > maxAirSpeed * maxAirSpeed)
-                    {
-                        float XDot = Vector2.Dot(AirVelocity, new Vector2(inputData.XDir, 0));
-                        float ZDot = Vector2.Dot(AirVelocity, new Vector2(0, inputData.ZDir));
-
-                        MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, 0, ZDot * MyRB.velocity.z);
-                    }
+                    ClampAirVelocity();
 
                     //// #TODO change this to add force to relative to camera angle if make sections that are not strictly 2D like the train car. 
                     //float xVelAfterFriction = Mathf.SmoothDamp(MyRB.velocity.x, 0, ref XVel, walkDeaccelerationTime * (MyRB.velocity.x / maxAirSpeed), float.MaxValue, Time.fixedDeltaTime);
@@ -218,15 +198,34 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
-
-
     }
 
+    private void ClampGroundVelocity()
+    {
+        Vector3 VelAfterFriction = Vector3.SmoothDamp(MyRB.velocity, new Vector3(0, MyRB.velocity.y, 0), ref GroundMovementVelocity, walkDeaccelerationTime, maxWalkSpeed, Time.fixedDeltaTime);
+        MyRB.velocity = VelAfterFriction;
+    }
+    private void ClampAirVelocity()
+    {
+        // clamping velocity to max air speed
+        Vector2 airVelocity = new Vector2(MyRB.velocity.x, MyRB.velocity.z);
+        if (airVelocity.sqrMagnitude > maxAirSpeed * maxAirSpeed)
+        {
+            float XDot = Vector2.Dot(airVelocity, new Vector2(inputData.XDir, 0));
+            float ZDot = Vector2.Dot(airVelocity, new Vector2(0, inputData.ZDir));
+
+            MyRB.velocity = new Vector3(XDot * MyRB.velocity.x, MyRB.velocity.y, ZDot * MyRB.velocity.z);
+        }
+    }
+
+    // Only call during physics time step / FixedUpdate()
     private void LeftGround()
     {
         MyRB.constraints = RigidbodyConstraints.FreezeRotation;
         XMoveWhenLeftGround = MyRB.velocity.x;
         ZMoveWhenLeftGround = MyRB.velocity.z;
+        //Vector3 LeftGroundVel = new Vector3(XMoveWhenLeftGround, MyRB.velocity.y, ZMoveWhenLeftGround);
+
         InAirTimer = 0;
         AirControlTimer = airControlTime;
     }

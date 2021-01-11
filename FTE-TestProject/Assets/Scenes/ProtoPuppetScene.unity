@@ -22856,15 +22856,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48d2734a74169334798303db95a7de26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxWalkSpeed: 1000000
+  maxWalkSpeed: 10000000
   walkAcceleration: 350000
-  walkDeaccelerationTime: 0.1
+  walkDeaccelerationTime: 0.05
   maxAirSpeed: 100000
-  airAcceleration: 30000
-  airControlTime: 0.1
+  airAcceleration: 15000
+  airControlTime: 0.5
   startJumpForce: 250
   stunningInAirTime: 1
-  stunnedLandingTime: 1
+  stunnedLandingTime: 0
   additionalGravityScale: 0
   minGroundDist: 0.2
   myHook: {fileID: 638914469}
